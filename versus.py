@@ -31,6 +31,7 @@ from gradientDescent import GD_main
 # global variables
 MAX_EPOCHS = 1000
 DATA_FILE = "spam.data"
+VAL_SPLIT = 0.2
 
 
 # Function: split matrix
@@ -148,13 +149,37 @@ def main():
     while is_train.shape[0] != X_sc.shape[0]:
         is_train = np.append(is_train, random.randint(1, num_folds))
 
+
+    matrix_list = []
+
     # (10 points) For each fold ID, you should create variables x_train, 
     #   y_train, x_test, y_test based on fold_vec.
+    for test_fold in range(1, num_folds + 1):
+        subtrain_size = np.sum( is_train == test_fold )
+        is_subtrain = np.random.choice( [True, False], subtrain_size, p=[.5, .5] )
+
+        X_train = np.delete( X_sc, np.argwhere( is_subtrain != True ), 0)
+        y_train = np.delete( y_vec, np.argwhere( is_subtrain != True ), 0)
+        X_validation = np.delete( X_sc, np.argwhere( is_subtrain != False ), 0)
+        y_validation = np.delete( y_vec, np.argwhere( is_subtrain != False ), 0)
+        X_test = np.delete( X_sc, np.argwhere( is_train != False ), 0 )
+        y_test = np.delete( y_vec, np.argwhere( is_train != False ), 0 )
+
+        model = create_model(hidden_units_i) 
+
+        # train on x-train, y-train
+        # save results to data table (split_matrix_list) for further analysis
+        matrix_list.append(model.fit( x = X_train,
+                                y = y_train,
+                                epochs = MAX_EPOCHS,
+                                validation_data=(X_validation, y_validation),
+                                verbose=2))
 
 
     # (10 points) Use x_train/y_train to fit the two neural network models 
     #   described above. Use at least 20 epochs with validation_split=0.2 
     #   (which splits the train data into 20% validation, 80% subtrain).
+    
 
     # (10 points) Compute validation loss for each number of epochs, and 
     #   define a variable best_epochs which is the number of epochs that 
