@@ -21,16 +21,17 @@ from keras.layers.core import Flatten, Dropout, Lambda
 from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import Adam
 from keras import optimizers
+from keras.utils import to_categorical
 import tensorflow as tf
 
 
-from SG_with_early_stopping_regularization import SG_main
-from nearest_neightbors import NN_main
-from gradientDescent import GD_main
+#from SG_with_early_stopping_regularization import SG_main
+#from nearest_neightbors import NN_main
+#from gradientDescent import GD_main
 
 # global variables
-MAX_EPOCHS = 1000
-DATA_FILE = "spam.data"
+MAX_EPOCHS = 2
+DATA_FILE = "zip.train"
 VAL_SPLIT = 0.2
 
 
@@ -52,11 +53,23 @@ def split_matrix(X_mat, y_vec, size):
 #   file_name : the csv file that we will be pulling our matrix data from
 # Return: data_matrix_full
 def convert_data_to_matrix(file_name):
-    with open(file_name, 'r') as data_file:
-        spam_file = list(csv.reader(data_file, delimiter = " "))
+    #with open(file_name, 'r') as data_file:
+    #    spam_file = list(csv.reader(data_file, delimiter = " "))
 
-    data_matrix_full = np.array(spam_file[0:], dtype=np.float)
-    return data_matrix_full
+    #data_matrix_full = np.array(spam_file[0:], dtype=np.float)
+
+    # read data from csv
+    all_data = np.genfromtxt(DATA_FILE, delimiter=" ")
+    print(all_data[:, 0])
+
+    # set inputs to everything but first col, and scale
+    print(all_data.shape)
+    X = np.asarray(np.delete(all_data, 0, axis=1))
+
+    # set outputs to first col of data
+    y = np.asarray(all_data[:, 0])
+
+    return X, y
 
 # Function: sigmoid
 # INPUT ARGS:
@@ -68,18 +81,37 @@ def sigmoid(x) :
 
 
 # function that will create our NN model given the amount of units passed in
-def create_model(units) :
+def create_fully_model() :
     sgd = optimizers.SGD(lr=0.01, clipnorm=1.)
     
     model = Sequential()
     
-    model.add(Dense(units=units, activation='sigmoid', use_bias=False))
-    model.add(Dense(1, activation="sigmoid", use_bias=False))
+    model.add(Dense(units=784, activation='sigmoid', use_bias=False))
+    model.add(Dense(units=270, activation='sigmoid', use_bias=False))
+    model.add(Dense(units=270, activation='sigmoid', use_bias=False))
+    model.add(Dense(units=128, activation='sigmoid', use_bias=False))
+    model.add(Dense(10, activation="sigmoid", use_bias=False))
     
-    model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
     
     return model
 
+# function thay will create our CNN model
+def create_convo_model() :
+    model = Sequential()
+    model.add(Conv2D(32, (3, 3), input_shape=(16, 16, 1), activation='relu'))
+    model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(Dropout(0.25))
+    model.add(Flatten())
+    model.add(Dense(units=128, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(10))
+
+    model.compile(loss='categorical_crossentropy', optimizer='Adadelta',
+                  metrics=['accuracy'])
+    model.summary()
+    return model
 
 # function to plot our loss
 def plot_loss( res_1, res_2, res_3 ) :
@@ -121,24 +153,24 @@ def main():
     print("starting")
     # use spam data set
 
-    data_matrix_full = convert_data_to_matrix(DATA_FILE)
-    np.random.seed( 0 )
-    np.random.shuffle(data_matrix_full)
+    X_sc, y_vec = convert_data_to_matrix(DATA_FILE)
+    #np.random.seed( 0 )
+    #np.random.shuffle(data_matrix_full)
 
     # get necessary variables
     # shape yields tuple : (row, col)
-    col_length = data_matrix_full.shape[1]
+    #col_length = data_matrix_full.shape[1]
 
-    X_Mat = np.delete(data_matrix_full, col_length - 1, 1)
-    y_vec = data_matrix_full[:,57]
+    #X_Mat = np.delete(data_matrix_full, col_length - 1, 1)
+    #y_vec = data_matrix_full[:,57]
 
-    X_sc = scale(X_Mat)
+    #X_sc = scale(X_Mat)
 
     # (10 points) For 5-fold cross-validation, create a variable fold_vec 
     #   which randomly assigns each observation to a fold from 1 to 5.
 
     num_folds = 5
-    multiplier_of_num_folds = int(X_Mat.shape[0]/num_folds)
+    multiplier_of_num_folds = int(X_sc.shape[0]/num_folds)
 
     is_train = np.array(list(np.arange(1,
                                         num_folds + 1))
@@ -150,7 +182,8 @@ def main():
         is_train = np.append(is_train, random.randint(1, num_folds))
 
 
-    matrix_list = []
+    fully_matrix_list = []
+    convo_matrix_list = []
 
     # (10 points) For each fold ID, you should create variables x_train, 
     #   y_train, x_test, y_test based on fold_vec.
@@ -159,21 +192,35 @@ def main():
         is_subtrain = np.random.choice( [True, False], subtrain_size, p=[.5, .5] )
 
         X_train = np.delete( X_sc, np.argwhere( is_subtrain != True ), 0)
+        X_train_convo = X_train.reshape(X_train.shape[0], 16, 16, 1)
+
         y_train = np.delete( y_vec, np.argwhere( is_subtrain != True ), 0)
+        y_train = to_categorical(y_train)
+
         X_validation = np.delete( X_sc, np.argwhere( is_subtrain != False ), 0)
+        X_validation_convo = X_validation.reshape(X_validation.shape[0], 16, 16, 1)
+
         y_validation = np.delete( y_vec, np.argwhere( is_subtrain != False ), 0)
-        X_test = np.delete( X_sc, np.argwhere( is_train != False ), 0 )
-        y_test = np.delete( y_vec, np.argwhere( is_train != False ), 0 )
+        y_validation = to_categorical(y_validation)
 
-        model = create_model(hidden_units_i) 
+        #X_test = np.delete( X_sc, np.argwhere( is_train != False ), 0 )
+        #y_test = np.delete( y_vec, np.argwhere( is_train != False ), 0 )
 
+        fully_model = create_fully_model()
         # train on x-train, y-train
         # save results to data table (split_matrix_list) for further analysis
-        matrix_list.append(model.fit( x = X_train,
+        fully_matrix_list.append(fully_model.fit( x = X_train,
                                 y = y_train,
                                 epochs = MAX_EPOCHS,
                                 validation_data=(X_validation, y_validation),
                                 verbose=2))
+
+        convo_model = create_convo_model()
+        convo_matrix_list.append(convo_model.fit( x = X_train_convo,
+                                                  y = y_train,
+                                                  epochs = MAX_EPOCHS,
+                                                  validation_data = (X_validation_convo, y_validation),
+                                                  verbose = 2))
 
 
     # (10 points) Use x_train/y_train to fit the two neural network models 
