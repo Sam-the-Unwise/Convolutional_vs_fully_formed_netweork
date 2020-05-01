@@ -95,6 +95,23 @@ def create_fully_model() :
     
     return model
 
+# 784,6272,9216,128,10
+# function that will create our NN model given the amount of units passed in
+def create_fully_model_large():
+    sgd = optimizers.SGD(lr=0.01, clipnorm=1.)
+
+    model = Sequential()
+
+    model.add(Dense(units=784, activation='sigmoid', use_bias=False))
+    model.add(Dense(units=6272, activation='sigmoid', use_bias=False))
+    model.add(Dense(units=9216, activation='sigmoid', use_bias=False))
+    model.add(Dense(units=128, activation='sigmoid', use_bias=False))
+    model.add(Dense(10, activation="sigmoid", use_bias=False))
+
+    model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
+
+    return model
+
 # function thay will create our CNN model
 def create_convo_model() :
     model = Sequential()
@@ -183,6 +200,7 @@ def main():
 
 
     fully_matrix_list = []
+    fully_la_matrix_list = []
     convo_matrix_list = []
     basel_matrix_list = []
 
@@ -229,6 +247,15 @@ def main():
                                 validation_data=(X_validation, y_validation),
                                 verbose=2)
 
+        fully_model_large = create_fully_model_large()
+        # train on x-train, y-train
+        # save results to data table (split_matrix_list) for further analysis
+        fully_large_history = fully_model_large.fit(x=X_train,
+                                        y=y_train,
+                                        epochs=MAX_EPOCHS,
+                                        validation_data=(X_validation, y_validation),
+                                        verbose=2)
+
         convo_model = create_convo_model()
         convo_history = convo_model.fit( x = X_train_convo,
                                                   y = y_train,
@@ -237,6 +264,7 @@ def main():
                                                   verbose = 2)
 
         best_fully_epoch = np.argmin(fully_history.history['val_loss'])
+        best_fully_la_epoch = np.argmin(fully_large_history.history['val_loss'])
         best_convo_epoch = np.argmin(convo_history.history['val_loss'])
 
         fully_final_model = create_fully_model()
@@ -247,6 +275,15 @@ def main():
                                                  epochs=best_fully_epoch,
                                                  verbose=2)
         fully_matrix_list.append(fully_final_model.evaluate(X_test, y_test)[1])
+
+        fully_la_final_model = create_fully_model_large()
+        # train on x-train, y-train
+        # save results to data table (split_matrix_list) for further analysis
+        fully_la_final_model.fit(x=X_train,
+                              y=y_train,
+                              epochs=best_fully_epoch,
+                              verbose=2)
+        fully_la_matrix_list.append(fully_la_final_model.evaluate(X_test, y_test)[1])
 
         convo_final_model = create_convo_model()
 
@@ -279,11 +316,18 @@ def main():
     #   the figure. Are the neural networks better than baseline? Which of the 
     #   two neural networks is more accurate?
 
+    color1 = generate_color( 1 )
+    color2 = generate_color( 2 )
+    color3 = generate_color( 3 )
+    color4 = generate_color( 4 )
+
+
     plt.title("Test Accuracy Dotplot")
-    for f, c, b in zip(fully_matrix_list, convo_matrix_list, basel_matrix_list) :
-        plt.scatter( f, "Fully Connected", c="r" )
-        plt.scatter( c, "Convolutional", c="b" )
-        plt.scatter( b, "Baseline", c="g")
+    for f, l, c, b in zip(fully_matrix_list, fully_la_matrix_list, convo_matrix_list, basel_matrix_list) :
+        plt.scatter( f, "Fully 784,270,270,128,10", c=color1 )
+        plt.scatter( l, "Fully 784,6272,9216,128,10", c=color2)
+        plt.scatter( c, "Convolutional", c=color3 )
+        plt.scatter( b, "Baseline", c=color4 )
     plt.xlim(right=1)
     plt.show()
 
