@@ -4,7 +4,7 @@
 #            Josh Kruse
 # DESCRIPTION: program that will implement a stochastic gradient descent algo
 #       for a neural network with one hidden layer
-# VERSION: 1.3.0v
+# VERSION: 1.3.2v
 #
 ###############################################################################
 
@@ -28,6 +28,7 @@ import tensorflow as tf
 #from SG_with_early_stopping_regularization import SG_main
 #from nearest_neightbors import NN_main
 #from gradientDescent import GD_main
+
 
 # global variables
 MAX_EPOCHS = 1
@@ -70,6 +71,7 @@ def convert_data_to_matrix(file_name):
 
     return X, y
 
+
 # Function: sigmoid
 # INPUT ARGS:
 #   x : value to be sigmoidified
@@ -95,6 +97,8 @@ def create_fully_model() :
     
     return model
 
+
+
 # 784,6272,9216,128,10
 # function that will create our NN model given the amount of units passed in
 def create_fully_model_large():
@@ -111,6 +115,7 @@ def create_fully_model_large():
     model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
 
     return model
+
 
 # function thay will create our CNN model
 def create_convo_model() :
@@ -129,10 +134,13 @@ def create_convo_model() :
     return model
 
 
+
 def generate_color( seed ):
     random.seed( seed )
     color = '#{:02x}{:02x}{:02x}'.format(*map(lambda x: random.randint(0, 255), range(3)))
     return color
+
+
 
 # function to plot our loss
 def plot_loss(res, vec, title):
@@ -170,18 +178,6 @@ def main():
     # use spam data set
 
     X_sc, y_vec = convert_data_to_matrix(DATA_FILE)
-
-    #np.random.seed( 0 )
-    #np.random.shuffle(data_matrix_full)
-
-    # get necessary variables
-    # shape yields tuple : (row, col)
-    #col_length = data_matrix_full.shape[1]
-
-    #X_Mat = np.delete(data_matrix_full, col_length - 1, 1)
-    #y_vec = data_matrix_full[:,57]
-
-    #X_sc = scale(X_Mat)
 
     # (10 points) For 5-fold cross-validation, create a variable fold_vec 
     #   which randomly assigns each observation to a fold from 1 to 5.
@@ -240,8 +236,6 @@ def main():
         print(X_validation.shape)
         print(is_subtrain.shape)
 
-        #X_test = np.delete( X_sc, np.argwhere( is_train != False ), 0 )
-        #y_test = np.delete( y_vec, np.argwhere( is_train != False ), 0 )
 
         # create full model
         fully_model = create_fully_model()
@@ -353,4 +347,3 @@ def main():
 main()
 
 
-# %%
