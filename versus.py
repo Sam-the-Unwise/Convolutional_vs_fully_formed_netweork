@@ -281,7 +281,7 @@ def main():
         # save results to data table (split_matrix_list) for further analysis
         fully_la_final_model.fit(x=X_train,
                               y=y_train,
-                              epochs=best_fully_epoch,
+                              epochs=best_fully_la_epoch,
                               verbose=2)
         fully_la_matrix_list.append(fully_la_final_model.evaluate(X_test, y_test)[1])
 
