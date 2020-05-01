@@ -30,7 +30,7 @@ import tensorflow as tf
 #from gradientDescent import GD_main
 
 # global variables
-MAX_EPOCHS = 2
+MAX_EPOCHS = 20
 DATA_FILE = "zip.train"
 VAL_SPLIT = 0.2
 
@@ -60,10 +60,9 @@ def convert_data_to_matrix(file_name):
 
     # read data from csv
     all_data = np.genfromtxt(DATA_FILE, delimiter=" ")
-    print(all_data[:, 0])
 
     # set inputs to everything but first col, and scale
-    print(all_data.shape)
+
     X = np.asarray(np.delete(all_data, 0, axis=1))
 
     # set outputs to first col of data
@@ -110,42 +109,42 @@ def create_convo_model() :
 
     model.compile(loss='categorical_crossentropy', optimizer='Adadelta',
                   metrics=['accuracy'])
-    model.summary()
     return model
 
+
+def generate_color( seed ):
+    random.seed( seed )
+    color = '#{:02x}{:02x}{:02x}'.format(*map(lambda x: random.randint(0, 255), range(3)))
+    return color
+
 # function to plot our loss
-def plot_loss( res_1, res_2, res_3 ) :
-    plt.plot(res_1.history['loss'], color='#30baff', label="10 train")
-    min_index = np.argmin(res_1.history['loss'])
-    plt.plot(min_index, res_1.history['loss'][min_index], "go")
+def plot_loss(res, vec, title):
+    best = [0, 0, 0]
 
-    plt.plot(res_1.history['val_loss'], '--', color='#30baff', label="10 val")
-    res_1_best = np.argmin(res_1.history['val_loss'])
-    plt.plot(res_1_best, res_1.history['val_loss'][res_1_best], "go")
+    for index, item in enumerate(res):
+        plt.plot(item.history['loss'], label=str(vec[index]) + " train", color=generate_color(index))
+        min_index = np.argmin(item.history['loss'])
+        plt.plot(min_index, item.history['loss'][min_index], "go")
 
-    plt.plot(res_2.history['loss'], color='#185d80', label="100 train")
-    min_index = np.argmin(res_2.history['loss'])
-    plt.plot(min_index, res_2.history['loss'][min_index], "go")
+        #plt.plot(item.history['val_loss'], '--', label=str(vec[index]) + " val", color=generate_color(index))
+        #res_best = np.argmin(item.history['val_loss'])
+        #res_loss = np.min(item.history['val_loss'])
+        #plt.plot(res_best, item.history['val_loss'][res_best], "go")
 
-    plt.plot(res_2.history['val_loss'], '--', color='#185d80', label="100 val")
-    res_2_best = np.argmin(res_2.history['val_loss'])
-    plt.plot(res_2_best, res_2.history['val_loss'][res_2_best], "go")
+        #print(res_loss)
 
-    plt.plot(res_3.history['loss'], color='#040f14', label="1000 train")
-    min_index = np.argmin(res_3.history['loss'])
-    plt.plot(min_index, res_3.history['loss'][min_index], "go")
+        #if min_index > best[2]:
+        #    best[0] = index
+        #    best[1] = res_best
+        #    best[2] = res_loss
 
-    plt.plot(res_3.history['val_loss'], '--', color='#040f14', label="1000 val")
-    res_3_best = np.argmin(res_3.history['val_loss'])
-    plt.plot(res_3_best, res_3.history['val_loss'][res_3_best], "go")
-
-    plt.title('model loss')
+    plt.title('model loss with respect to ' + title)
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend(loc='upper left')
     plt.show()
 
-    return res_1_best+1, res_2_best+1, res_3_best+1
+    return best
 
 
 # Function: main
@@ -154,6 +153,7 @@ def main():
     # use spam data set
 
     X_sc, y_vec = convert_data_to_matrix(DATA_FILE)
+
     #np.random.seed( 0 )
     #np.random.shuffle(data_matrix_full)
 
@@ -188,20 +188,33 @@ def main():
     # (10 points) For each fold ID, you should create variables x_train, 
     #   y_train, x_test, y_test based on fold_vec.
     for test_fold in range(1, num_folds + 1):
-        subtrain_size = np.sum( is_train == test_fold )
-        is_subtrain = np.random.choice( [True, False], subtrain_size, p=[.5, .5] )
 
-        X_train = np.delete( X_sc, np.argwhere( is_subtrain != True ), 0)
+        X_new = np.delete( X_sc, np.argwhere( is_train != test_fold ), 0 )
+        y_new = np.delete( y_vec, np.argwhere( is_train != test_fold ), 0 )
+
+        X_test = np.delete(X_sc, np.argwhere(is_train == test_fold), 0)
+        X_test_convo = X_test.reshape(X_test.shape[0], 16, 16, 1)
+        y_test = np.delete(y_vec, np.argwhere(is_train == test_fold), 0)
+        y_test = to_categorical(y_test)
+
+        subtrain_size = np.sum( is_train == test_fold )
+        is_subtrain = np.random.choice( [True, False], subtrain_size, p=[.8, .2] )
+
+        X_train = np.delete( X_new, np.argwhere( is_subtrain != True ), 0)
         X_train_convo = X_train.reshape(X_train.shape[0], 16, 16, 1)
 
-        y_train = np.delete( y_vec, np.argwhere( is_subtrain != True ), 0)
+        y_train = np.delete( y_new, np.argwhere( is_subtrain != True ), 0)
         y_train = to_categorical(y_train)
 
-        X_validation = np.delete( X_sc, np.argwhere( is_subtrain != False ), 0)
+        X_validation = np.delete( X_new, np.argwhere( is_subtrain != False ), 0)
         X_validation_convo = X_validation.reshape(X_validation.shape[0], 16, 16, 1)
 
-        y_validation = np.delete( y_vec, np.argwhere( is_subtrain != False ), 0)
+        y_validation = np.delete( y_new, np.argwhere( is_subtrain != False ), 0)
         y_validation = to_categorical(y_validation)
+
+        print(X_train.shape)
+        print(X_validation.shape)
+        print(is_subtrain.shape)
 
         #X_test = np.delete( X_sc, np.argwhere( is_train != False ), 0 )
         #y_test = np.delete( y_vec, np.argwhere( is_train != False ), 0 )
@@ -209,40 +222,44 @@ def main():
         fully_model = create_fully_model()
         # train on x-train, y-train
         # save results to data table (split_matrix_list) for further analysis
-        fully_matrix_list.append(fully_model.fit( x = X_train,
+        fully_history = fully_model.fit( x = X_train,
                                 y = y_train,
                                 epochs = MAX_EPOCHS,
                                 validation_data=(X_validation, y_validation),
-                                verbose=2))
+                                verbose=2)
 
         convo_model = create_convo_model()
-        convo_matrix_list.append(convo_model.fit( x = X_train_convo,
+        convo_history = convo_model.fit( x = X_train_convo,
                                                   y = y_train,
                                                   epochs = MAX_EPOCHS,
                                                   validation_data = (X_validation_convo, y_validation),
-                                                  verbose = 2))
+                                                  verbose = 2)
 
+        best_fully_epoch = np.argmin(fully_history.history['val_loss'])
+        best_convo_epoch = np.argmin(convo_history.history['val_loss'])
 
-    # (10 points) Use x_train/y_train to fit the two neural network models 
-    #   described above. Use at least 20 epochs with validation_split=0.2 
-    #   (which splits the train data into 20% validation, 80% subtrain).
-    
+        fully_final_model = create_fully_model()
+        # train on x-train, y-train
+        # save results to data table (split_matrix_list) for further analysis
+        fully_final_model.fit(x=X_train,
+                                                 y=y_train,
+                                                 epochs=best_fully_epoch,
+                                                 verbose=2)
+        fully_matrix_list.append(fully_final_model.evaluate(X_test, y_test)[1])
 
-    # (10 points) Compute validation loss for each number of epochs, and 
-    #   define a variable best_epochs which is the number of epochs that 
-    #   results in minimal validation loss.
+        convo_final_model = create_convo_model()
 
-    # (10 points) Re-fit the model on the entire train set using best_epochs 
-    #   and validation_split=0.
+        convo_final_model.fit(x=X_train_convo,
+                                                 y=y_train,
+                                                 epochs=best_convo_epoch,
+                                                 verbose=2)
+        convo_matrix_list.append(convo_final_model.evaluate( X_test_convo, y_test )[1])
 
-    # (10 points) Finally use evaluate to compute the accuracy of the learned 
-    #   model on the test set. (proportion correctly predicted labels in the 
-    #   test set)
-
-    # (10 points) Also compute the accuracy of the baseline model, which always 
+    # (10 points) Also compute the accuracy of the baseline model, which always
     #   predicts the most frequent class label in the train data.
 
-
+    print(fully_matrix_list)
+    print(convo_matrix_list)
     # (10 points) At the end of your for loop over fold IDs, you should store 
     #   the accuracy values, model names, and fold IDs in a data structure (e.g. 
     #   list of data tables) for analysis/plotting.
@@ -254,27 +271,6 @@ def main():
     #   test fold ID). Make a comment in your report on your interpretation of 
     #   the figure. Are the neural networks better than baseline? Which of the 
     #   two neural networks is more accurate?
-
-
-
-    # (10 points) Divide the data into 80% train, 20% test observations
-    is_train = np.random.choice( [True, False], X_sc.shape[0], p=[.8, .2] )
-
-    # (10 points) Next divide the train data into 60% subtrain, 40% validation
-    subtrain_size = np.sum( is_train == True )
-    is_subtrain = np.random.choice( [True, False], subtrain_size, p=[.6, .4] )
-
-    X_train = np.delete( X_sc, np.argwhere( is_subtrain != True ), 0)
-    y_train = np.delete( y_vec, np.argwhere( is_subtrain != True ), 0)
-    X_validation = np.delete( X_sc, np.argwhere( is_subtrain != False ), 0)
-    y_validation = np.delete( y_vec, np.argwhere( is_subtrain != False ), 0)
-    X_test = np.delete( X_sc, np.argwhere( is_train != False ), 0 )
-    y_test = np.delete( y_vec, np.argwhere( is_train != False ), 0 )
-
-    
-
-
-
 
 main()
 
