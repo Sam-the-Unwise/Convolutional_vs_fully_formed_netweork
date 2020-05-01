@@ -30,7 +30,7 @@ import tensorflow as tf
 #from gradientDescent import GD_main
 
 # global variables
-MAX_EPOCHS = 20
+MAX_EPOCHS = 1
 DATA_FILE = "zip.train"
 VAL_SPLIT = 0.2
 
@@ -184,6 +184,7 @@ def main():
 
     fully_matrix_list = []
     convo_matrix_list = []
+    basel_matrix_list = []
 
     # (10 points) For each fold ID, you should create variables x_train, 
     #   y_train, x_test, y_test based on fold_vec.
@@ -194,8 +195,8 @@ def main():
 
         X_test = np.delete(X_sc, np.argwhere(is_train == test_fold), 0)
         X_test_convo = X_test.reshape(X_test.shape[0], 16, 16, 1)
-        y_test = np.delete(y_vec, np.argwhere(is_train == test_fold), 0)
-        y_test = to_categorical(y_test)
+        y_test_no = np.delete(y_vec, np.argwhere(is_train == test_fold), 0)
+        y_test = to_categorical(y_test_no)
 
         subtrain_size = np.sum( is_train == test_fold )
         is_subtrain = np.random.choice( [True, False], subtrain_size, p=[.8, .2] )
@@ -255,11 +256,17 @@ def main():
                                                  verbose=2)
         convo_matrix_list.append(convo_final_model.evaluate( X_test_convo, y_test )[1])
 
+        baseline_model = np.zeros( X_test.shape[0] )
+        print("y_test", y_test_no.shape)
+        print(baseline_model.shape)
+        basel_matrix_list.append( np.mean( y_test_no == baseline_model ) )
+
     # (10 points) Also compute the accuracy of the baseline model, which always
     #   predicts the most frequent class label in the train data.
 
     print(fully_matrix_list)
     print(convo_matrix_list)
+    print(basel_matrix_list)
     # (10 points) At the end of your for loop over fold IDs, you should store 
     #   the accuracy values, model names, and fold IDs in a data structure (e.g. 
     #   list of data tables) for analysis/plotting.
@@ -271,6 +278,14 @@ def main():
     #   test fold ID). Make a comment in your report on your interpretation of 
     #   the figure. Are the neural networks better than baseline? Which of the 
     #   two neural networks is more accurate?
+
+    plt.title("Test Accuracy Dotplot")
+    for f, c, b in zip(fully_matrix_list, convo_matrix_list, basel_matrix_list) :
+        plt.scatter( f, "Fully Connected", c="r" )
+        plt.scatter( c, "Convolutional", c="b" )
+        plt.scatter( b, "Baseline", c="g")
+    plt.xlim(right=1)
+    plt.show()
 
 main()
 
