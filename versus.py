@@ -208,9 +208,11 @@ def main():
     #   y_train, x_test, y_test based on fold_vec.
     for test_fold in range(1, num_folds + 1):
 
+        # create full sets
         X_new = np.delete( X_sc, np.argwhere( is_train != test_fold ), 0 )
         y_new = np.delete( y_vec, np.argwhere( is_train != test_fold ), 0 )
 
+        # create test sets
         X_test = np.delete(X_sc, np.argwhere(is_train == test_fold), 0)
         X_test_convo = X_test.reshape(X_test.shape[0], 16, 16, 1)
         y_test_no = np.delete(y_vec, np.argwhere(is_train == test_fold), 0)
@@ -219,18 +221,21 @@ def main():
         subtrain_size = np.sum( is_train == test_fold )
         is_subtrain = np.random.choice( [True, False], subtrain_size, p=[.8, .2] )
 
+        # create subtrain data
         X_train = np.delete( X_new, np.argwhere( is_subtrain != True ), 0)
         X_train_convo = X_train.reshape(X_train.shape[0], 16, 16, 1)
 
         y_train = np.delete( y_new, np.argwhere( is_subtrain != True ), 0)
         y_train = to_categorical(y_train)
 
+        # create validation data
         X_validation = np.delete( X_new, np.argwhere( is_subtrain != False ), 0)
         X_validation_convo = X_validation.reshape(X_validation.shape[0], 16, 16, 1)
 
         y_validation = np.delete( y_new, np.argwhere( is_subtrain != False ), 0)
         y_validation = to_categorical(y_validation)
 
+        # simply display of data
         print(X_train.shape)
         print(X_validation.shape)
         print(is_subtrain.shape)
@@ -238,6 +243,7 @@ def main():
         #X_test = np.delete( X_sc, np.argwhere( is_train != False ), 0 )
         #y_test = np.delete( y_vec, np.argwhere( is_train != False ), 0 )
 
+        # create full model
         fully_model = create_fully_model()
         # train on x-train, y-train
         # save results to data table (split_matrix_list) for further analysis
@@ -247,6 +253,7 @@ def main():
                                 validation_data=(X_validation, y_validation),
                                 verbose=2)
 
+        # create a larger full model with same data as full model
         fully_model_large = create_fully_model_large()
         # train on x-train, y-train
         # save results to data table (split_matrix_list) for further analysis
@@ -256,6 +263,7 @@ def main():
                                         validation_data=(X_validation, y_validation),
                                         verbose=2)
 
+        # create a convolutional model with the same data as the full model
         convo_model = create_convo_model()
         convo_history = convo_model.fit( x = X_train_convo,
                                                   y = y_train,
@@ -263,19 +271,24 @@ def main():
                                                   validation_data = (X_validation_convo, y_validation),
                                                   verbose = 2)
 
+        # find the best epoch to create a new model
         best_fully_epoch = np.argmin(fully_history.history['val_loss'])
         best_fully_la_epoch = np.argmin(fully_large_history.history['val_loss'])
         best_convo_epoch = np.argmin(convo_history.history['val_loss'])
 
+
+        # create a full model based on the best epoch
         fully_final_model = create_fully_model()
         # train on x-train, y-train
         # save results to data table (split_matrix_list) for further analysis
         fully_final_model.fit(x=X_train,
-                                                 y=y_train,
-                                                 epochs=best_fully_epoch,
-                                                 verbose=2)
+                                y=y_train,
+                                epochs=best_fully_epoch,
+                                verbose=2)
         fully_matrix_list.append(fully_final_model.evaluate(X_test, y_test)[1])
 
+
+        # create a larger full model based on the best epoch
         fully_la_final_model = create_fully_model_large()
         # train on x-train, y-train
         # save results to data table (split_matrix_list) for further analysis
@@ -285,21 +298,26 @@ def main():
                               verbose=2)
         fully_la_matrix_list.append(fully_la_final_model.evaluate(X_test, y_test)[1])
 
+
+        # create a convolutional model based on the best epoch
         convo_final_model = create_convo_model()
 
         convo_final_model.fit(x=X_train_convo,
-                                                 y=y_train,
-                                                 epochs=best_convo_epoch,
-                                                 verbose=2)
+                                y=y_train,
+                                epochs=best_convo_epoch,
+                                verbose=2)
         convo_matrix_list.append(convo_final_model.evaluate( X_test_convo, y_test )[1])
 
+        # (10 points) Also compute the accuracy of the baseline model, which always
+        #   predicts the most frequent class label in the train data.
+
+        # create the baseline model
         baseline_model = np.zeros( X_test.shape[0] )
         print("y_test", y_test_no.shape)
         print(baseline_model.shape)
         basel_matrix_list.append( np.mean( y_test_no == baseline_model ) )
 
-    # (10 points) Also compute the accuracy of the baseline model, which always
-    #   predicts the most frequent class label in the train data.
+    
 
     print(fully_matrix_list)
     print(convo_matrix_list)
@@ -322,6 +340,7 @@ def main():
     color4 = generate_color( 4 )
 
 
+    # plot our data
     plt.title("Test Accuracy Dotplot")
     for f, l, c, b in zip(fully_matrix_list, fully_la_matrix_list, convo_matrix_list, basel_matrix_list) :
         plt.scatter( f, "Fully 784,270,270,128,10", c=color1 )
